@@ -573,12 +573,12 @@
                     <!-- SINGLE REPORT PREVIEW AREA (OPTIMIZED FOR EXACT 1 PAGE FOLIO F4) -->
                     <div id="print-area" class="bg-white rounded-2xl border border-slate-300 shadow-md p-6 max-w-[215mm] mx-auto text-slate-800 font-sans flex flex-col justify-between" style="min-height: 330mm;">
                         <div>
-                            <!-- Kop Surat Resmi: Nama Madrasah di Atas, Kementerian di Bawah -->
+                            <!-- Kop Surat Resmi: Nama Madrasah di Atas (Diperbesar), Kementerian di Bawah -->
                             <div class="flex items-center justify-between border-b-2 border-slate-800 pb-3 mb-3">
                                 <img id="rpt-logo-left" src="https://placehold.co/80x80/16a34a/ffffff?text=LOGO" class="w-16 h-16 object-contain">
                                 <div class="text-center flex-1 px-3">
-                                    <h1 id="rpt-school-name" class="text-xl font-extrabold uppercase tracking-wide text-slate-900">MADRASAH TSANAWIYAH AL-HIDAYAH</h1>
-                                    <h3 id="rpt-school-subtitle" class="text-xs font-bold uppercase tracking-wider text-slate-700 mt-0.5">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h3>
+                                    <h1 id="rpt-school-name" class="text-2xl font-extrabold uppercase tracking-wide text-slate-900 leading-tight">MADRASAH TSANAWIYAH AL-HIDAYAH</h1>
+                                    <h3 id="rpt-school-subtitle" class="text-xs font-bold uppercase tracking-wider text-slate-700 mt-1">KEMENTERIAN AGAMA REPUBLIK INDONESIA</h3>
                                     <p id="rpt-school-address" class="text-[10px] text-slate-600 mt-0.5">Jl. Pendidikan No. 123 Telp. (021) 5551234 Kode Pos 12345</p>
                                 </div>
                                 <img id="rpt-logo-right" src="https://placehold.co/80x80/16a34a/ffffff?text=LOGO" class="w-16 h-16 object-contain">
@@ -590,21 +590,21 @@
                             </div>
 
                             <!-- Identitas Siswa (Enlarged Font 12/13px, Clean Single Line/Compact Layout without School/Wali Kelas) -->
-                            <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 p-3 bg-slate-50 rounded-xl border border-slate-200 text-[12px] sm:text-[13px] mb-3">
+                            <div class="grid grid-cols-2 gap-x-6 gap-y-1.5 p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-[12px] sm:text-[13px] mb-3 font-medium">
                                 <div class="flex">
-                                    <span class="w-36 font-semibold text-slate-600">Nama Peserta Didik</span>
+                                    <span class="w-36 text-slate-600 font-semibold">Nama Peserta Didik</span>
                                     <span class="font-bold text-slate-900">: <span id="rpt-student-name">--</span></span>
                                 </div>
                                 <div class="flex">
-                                    <span class="w-36 font-semibold text-slate-600">Nomor Induk / NISN</span>
+                                    <span class="w-36 text-slate-600 font-semibold">Nomor Induk / NISN</span>
                                     <span class="font-bold text-slate-900">: <span id="rpt-student-nis">--</span></span>
                                 </div>
                                 <div class="flex">
-                                    <span class="w-36 font-semibold text-slate-600">Kelas / Semester</span>
+                                    <span class="w-36 text-slate-600 font-semibold">Kelas / Semester</span>
                                     <span class="font-bold text-slate-900">: <span id="rpt-student-class">--</span> / <span id="rpt-semester-text">Ganjil</span></span>
                                 </div>
                                 <div class="flex">
-                                    <span class="w-36 font-semibold text-slate-600">Tahun Ajaran</span>
+                                    <span class="w-36 text-slate-600 font-semibold">Tahun Ajaran</span>
                                     <span class="font-bold text-slate-900">: <span id="rpt-ta-text">2025/2026</span></span>
                                 </div>
                             </div>
@@ -899,7 +899,6 @@
                     loadFromLocalStorage();
                 }
             } catch (e) {
-                // Graceful fallback to local storage on permission or network errors
                 loadFromLocalStorage();
             }
 
@@ -923,7 +922,6 @@
                     saveToCloud();
                 }
             }, (error) => {
-                // Silently fallback to local storage without throwing unhandled exceptions
                 loadFromLocalStorage();
                 const statusEl = document.getElementById('cloud-status');
                 if (statusEl) {
@@ -954,7 +952,14 @@
             const local = localStorage.getItem('madrasah_app_state');
             if (local) {
                 try {
-                    window.appState = JSON.parse(local);
+                    const parsed = JSON.parse(local);
+                    if (parsed && typeof parsed === 'object') {
+                        if (parsed.settings) window.appState.settings = { ...window.appState.settings, ...parsed.settings };
+                        if (Array.isArray(parsed.students)) window.appState.students = parsed.students;
+                        if (Array.isArray(parsed.subjects)) window.appState.subjects = parsed.subjects;
+                        if (parsed.grades) window.appState.grades = parsed.grades;
+                        if (parsed.attendance) window.appState.attendance = parsed.attendance;
+                    }
                 } catch (e) {}
             }
         }
@@ -1860,17 +1865,27 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const parsed = JSON.parse(e.target.result);
-                    if (parsed && parsed.students && parsed.subjects) {
-                        window.appState = parsed;
+                    let content = e.target.result;
+                    // Handle potential BOM or malformed wrappers
+                    if (content.charCodeAt(0) === 0xFEFF) {
+                        content = content.slice(1);
+                    }
+                    const parsed = JSON.parse(content);
+                    if (parsed && typeof parsed === 'object') {
+                        if (parsed.settings) window.appState.settings = { ...window.appState.settings, ...parsed.settings };
+                        if (Array.isArray(parsed.students)) window.appState.students = parsed.students;
+                        if (Array.isArray(parsed.subjects)) window.appState.subjects = parsed.subjects;
+                        if (parsed.grades) window.appState.grades = parsed.grades;
+                        if (parsed.attendance) window.appState.attendance = parsed.attendance;
+
                         saveDataState();
                         initializeAppUI();
                         alertCustom("Database berhasil di-import dan disinkronkan!");
                     } else {
-                        alertCustom("Format file backup tidak valid.");
+                        alertCustom("Format file backup JSON tidak valid atau kosong.");
                     }
                 } catch (err) {
-                    alertCustom("Gagal membaca file JSON.");
+                    alertCustom("Gagal membaca file JSON. Pastikan file backup berformat .json yang benar.");
                 }
             };
             reader.readAsText(file);
